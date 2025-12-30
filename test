@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lucy's Game Launcher</title>
+    <style>
+        :root { --primary: #ff0055; --bg: #0f0f0f; --surface: #1a1a1a; --text: #e0e0e0; --border: #333; }
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; padding-bottom: 80px; }
+        
+        /* HEADER */
+        header { background: rgba(15, 15, 15, 0.98); position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .top-bar { padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
+        h1 { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* NAV */
+        .nav-container { display: flex; align-items: center; border-top: 1px solid #222; }
+        .nav-tabs { display: flex; flex: 1; overflow-x: auto; }
+        .tab-btn { flex: 1; min-width: 80px; background: 0 0; border: none; color: #888; padding: 15px 5px; cursor: pointer; font-weight: 600; border-bottom: 3px solid transparent; transition: 0.3s; }
+        .tab-btn.active { color: #fff; border-bottom-color: var(--primary); background: rgba(255,255,255,.03); }
+        .filter-toggle-btn { background: #222; border: none; border-left: 1px solid #333; color: #888; width: 50px; cursor: pointer; font-size: 1.2rem; }
+        .filter-toggle-btn.active { color: var(--primary); background: #2a2a2a; }
+        #platform-bar { display: none; background: #181818; padding: 10px; border-bottom: 1px solid var(--border); justify-content: center; gap: 10px; animation: slideDown 0.2s; }
+        #platform-bar.show { display: flex; }
+        .plat-btn { background: #333; border: 1px solid transparent; color: #ccc; padding: 6px 15px; border-radius: 20px; font-size: .8rem; cursor: pointer; }
+        .plat-btn.active { background: var(--primary); color: #fff; box-shadow: 0 0 10px rgba(255,0,85,.4); }
+
+        /* CARROSSEL */
+        #carousel-container { width: 94%; max-width: 1200px; height: 220px; margin: 15px auto; position: relative; display: none; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #333; }
+        .carousel-track { display: flex; height: 100%; transition: transform .5s cubic-bezier(0.25, 1, 0.5, 1); }
+        .carousel-slide { min-width: 100%; height: 100%; position: relative; background-size: cover; background-position: center; cursor: pointer; }
+        .slide-content { position: absolute; bottom: 0; width: 100%; background: linear-gradient(to top, rgba(0,0,0,0.95), transparent); padding: 20px; color: #fff; display: flex; flex-direction: column; justify-content: flex-end; }
+        .slide-title { font-size: 1.5rem; font-weight: 700; text-shadow: 0 2px 10px #000; margin-bottom: 5px; }
+        .slide-sub { font-size: 0.8rem; color: var(--primary); font-weight: bold; text-transform: uppercase; }
+        .car-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: 0.2s; backdrop-filter: blur(2px); }
+        .car-arrow:hover { background: var(--primary); }
+        .car-prev { left: 10px; } .car-next { right: 10px; }
+
+        /* GRID */
+        #category-filter { display: none; padding: 15px 20px; gap: 8px; flex-wrap: wrap; background: #141414; }
+        .cat-chip { padding: 6px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; font-size: .85rem; cursor: pointer; color: #888; }
+        .cat-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        #game-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; padding: 15px; max-width: 1200px; margin: 0 auto; }
+        
+        /* CARD */
+        .card { background: var(--surface); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform .2s, box-shadow .2s; border: 1px solid transparent; display: flex; flex-direction: column; position: relative; }
+        .card:hover { border-color: var(--primary); transform: translateY(-5px); box-shadow: 0 5px 20px rgba(255,0,85,.3); }
+        .card img { width: 100%; height: 200px; object-fit: cover; background: #222; }
+        .card-info { padding: 12px; flex: 1; display: flex; flex-direction: column; }
+        .card-title { font-weight: 700; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.95rem; }
+        .badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: auto; }
+        .badge { font-size: .65rem; padding: 2px 6px; border-radius: 4px; background: #333; font-weight: 600; text-transform: uppercase; }
+        .badge.android { color: #3DDC84; border: 1px solid #3DDC84; background: rgba(61,220,132,.1); }
+        .badge.windows { color: #0078D7; border: 1px solid #0078D7; background: rgba(0,120,215,.1); }
+        .badge.html { color: #E34F26; border: 1px solid #E34F26; background: rgba(227,79,38,.1); }
+
+        /* MODAL */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 2000; overflow-y: auto; backdrop-filter: blur(5px); }
+        .modal.active { display: block; }
+        .modal-scroll-container { min-height: 100%; display: flex; justify-content: center; align-items: flex-start; padding: 40px 20px; }
+        .modal-box { background: var(--surface); width: 100%; max-width: 500px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); position: relative; animation: slideUp .3s; box-shadow: 0 20px 50px #000; }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slideDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .close-modal-fixed { position: fixed; top: 20px; right: 20px; width: 40px; height: 40px; background: rgba(0,0,0,.8); color: #fff; border: 2px solid var(--border); border-radius: 50%; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 3000; transition: .2s; }
+        .close-modal-fixed:hover { background: var(--primary); border-color: var(--primary); transform: rotate(90deg); }
+        .details-header { height: 180px; background-size: cover; background-position: center; position: relative; }
+        .details-header::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, var(--surface), transparent); }
+        .details-content { padding: 20px; }
+        .download-btn { display: flex; justify-content: space-between; align-items: center; background: #2a2a2a; color: #fff; padding: 15px; margin-bottom: 10px; text-decoration: none; border-radius: 8px; border-left: 4px solid var(--primary); transition: .2s; }
+        .download-btn:active { transform: scale(0.98); }
+
+        /* ADMIN */
+        .btn { background: var(--surface); color: #fff; border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        .btn-primary { background: var(--primary); border-color: var(--primary); font-weight: 700; }
+        .form-control { width: 100%; background: #252525; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 10px; }
+        .tag-input-container { border: 1px solid #333; background: #252525; padding: 5px; display: flex; flex-wrap: wrap; gap: 5px; border-radius: 6px; }
+        .tag-chip { background: var(--primary); color: #fff; font-size: .8rem; padding: 4px 8px; border-radius: 4px; display: flex; align-items: center; gap: 5px; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--primary); color: #fff; padding: 10px 25px; border-radius: 30px; z-index: 4000; display: none; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="top-bar">
+        <h1>Lucy's Games</h1>
+        <button class="btn" onclick="forceReload()">↻</button>
+    </div>
+    <div class="nav-container">
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('all')" id="tab-all">Todos</button>
+            <button class="tab-btn" onclick="switchTab('recent')" id="tab-recent">Recentes</button>
+            <button class="tab-btn" onclick="switchTab('updated')" id="tab-updated">Updates</button>
+            <button class="tab-btn" onclick="switchTab('categories')" id="tab-categories">Tags</button>
+        </div>
+        <button class="filter-toggle-btn" onclick="togglePlatformBar()" id="filter-btn">≡</button>
+    </div>
+    <div id="platform-bar">
+        <button class="plat-btn active" onclick="setPlatformFilter(null)" id="pf-all">Todas</button>
+        <button class="plat-btn" onclick="setPlatformFilter('windows')" id="pf-windows">PC</button>
+        <button class="plat-btn" onclick="setPlatformFilter('android')" id="pf-android">Android</button>
+        <button class="plat-btn" onclick="setPlatformFilter('html')" id="pf-html">Web</button>
+    </div>
+</header>
+
+<div id="carousel-container">
+    <button class="car-arrow car-prev" onclick="moveSlide(-1)">&#10094;</button>
+    <div class="carousel-track" id="carousel-track"></div>
+    <button class="car-arrow car-next" onclick="moveSlide(1)">&#10095;</button>
+</div>
+
+<div id="category-filter"></div>
+<div id="game-list"><div style="text-align:center;padding:20px;color:#666;">Iniciando...</div></div>
+
+<div id="modal-details" class="modal">
+    <button class="close-modal-fixed" onclick="closeModal('modal-details')">×</button>
+    <div class="modal-scroll-container"><div class="modal-box">
+        <div class="details-header" id="d-bg"></div>
+        <div class="details-content">
+            <h2 id="d-title" style="margin:0;"></h2>
+            <div id="d-dev" style="color:var(--primary);font-size:.9rem;margin-bottom:5px;"></div>
+            <div id="d-cats" class="badges"></div>
+            <p style="line-height:1.6;color:#ccc;white-space:pre-wrap;" id="d-desc"></p>
+            <hr style="border:0;border-top:1px solid #333;margin:20px 0;">
+            <h4 style="margin:0 0 10px 0;color:#fff;">Downloads</h4>
+            <div id="d-links"></div>
+            <div style="font-size:.7rem;color:#666;text-align:right;margin-top:20px;">Pub: <span id="d-date-up"></span> | Upd: <span id="d-date-mod"></span></div>
+        </div>
+    </div></div>
+</div>
+
+<div id="modal-admin" class="modal">
+    <button class="close-modal-fixed" onclick="closeModal('modal-admin')">×</button>
+    <div class="modal-scroll-container"><div class="modal-box admin-panel">
+        <div class="details-content">
+            <div id="admin-login" style="text-align:center;">
+                <h2>Admin</h2>
+                <input type="password" id="gh-token" class="form-control" placeholder="Token GitHub" style="text-align:center;">
+                <button class="btn btn-primary" onclick="adminLogin()">Entrar</button>
+            </div>
+            
+            <div id="admin-dashboard" style="display:none;">
+                <div style="display:flex;gap:10px;margin-bottom:15px;border-bottom:1px solid #333;padding-bottom:10px;">
+                    <button class="btn" onclick="viewAdmin('games')">Jogos</button>
+                    <button class="btn" onclick="viewAdmin('featured')">Destaques</button>
+                    <button class="btn" style="background:#cf222e; margin-left:auto;" onclick="adminLogout()">Sair</button>
+                </div>
+                
+                <div id="adm-games-view">
+                    <button class="btn btn-primary" style="width:100%;margin-bottom:10px;" onclick="showEdit(null)">+ Novo Jogo</button>
+                    <div id="adm-list-games" style="max-height:200px;overflow-y:auto;border:1px solid #333;padding:5px;"></div>
+                    
+                    <div id="adm-edit-form" style="display:none;margin-top:15px;border-top:1px solid #333;padding-top:15px;">
+                        <input type="hidden" id="ed-idx"><input type="hidden" id="ed-created">
+                        <input id="ed-name" class="form-control" placeholder="Nome">
+                        <input id="ed-dev" class="form-control" placeholder="Dev">
+                        <textarea id="ed-desc" class="form-control" rows="3" placeholder="Descrição"></textarea>
+                        <input id="ed-cover" class="form-control" placeholder="Capa URL">
+                        <input id="ed-bg" class="form-control" placeholder="BG URL (Opcional)">
+                        <div class="tag-input-container"><div id="ed-tags-active"></div><input id="ed-tag-input" style="background:0 0;border:none;color:#fff;flex:1;" placeholder="+ Tag (Enter)" list="dl-tags"></div><datalist id="dl-tags"></datalist>
+                        <div id="ed-links" style="margin-top:10px;"></div>
+                        <button class="btn" onclick="addLinkRow()" style="width:100%;border:1px dashed #555;margin-top:5px;">+ Link</button>
+                        <div style="display:flex;gap:10px;margin-top:15px;">
+                            <button class="btn btn-primary" onclick="saveLocalGame()">Salvar (RAM)</button>
+                            <button class="btn" style="background:#cf222e;" onclick="delGame()">Excluir</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" style="background:#00e676;color:#000;width:100%;margin-top:20px;" onclick="syncFile('games')">☁ Upload p/ A.json</button>
+                </div>
+
+                <div id="adm-feat-view" style="display:none;">
+                    <div id="adm-list-feat" style="margin-bottom:15px;"></div>
+                    <div style="border:1px dashed #444;padding:10px;">
+                        <label style="font-size:0.8rem;color:#888">Selecione o Jogo:</label>
+                        <select id="feat-select" class="form-control"></select>
+                        <button class="btn btn-primary" style="width:100%" onclick="addFeat()">Adicionar Destaque</button>
+                    </div>
+                    <button class="btn btn-primary" style="background:#00e676;color:#000;width:100%;margin-top:20px;" onclick="syncFile('featured')">☁ Upload Featured.json</button>
+                </div>
+            </div>
+        </div>
+    </div></div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+    const GH = { u: 'LucyYuih', r: 'teststests', b: 'main' };
+    let data = { G: [], T: [] }, featured = [];
+    let shas = { games: null, featured: null };
+    let state = { tab: 'all', platform: null, tag: null, tk: localStorage.getItem('gh_token') };
+    let temp = { tags: [] };
+    let carIdx = 0, carTimer = null;
+
+    /* CRYPTO */
+    const enc = t => { if(!t)return"";t=String(t);let r="",s=3;for(let i=0;i<t.length;i++){let c=t[i];if(c.match(/[a-z]/i)){let k=t.charCodeAt(i),b=(k>=65&&k<=90)?65:97;r+=String.fromCharCode(((k-b+s)%26)+b)}else r+=c}return r; };
+    const dec = t => { if(!t)return"";t=String(t);let r="",s=3;for(let i=0;i<t.length;i++){let c=t[i];if(c.match(/[a-z]/i)){let k=t.charCodeAt(i),b=(k>=65&&k<=90)?65:97;r+=String.fromCharCode(((k-b-s+26)%26)+b)}else r+=c}return r; };
+    const showToast = m => { let t=document.getElementById('toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); };
+    
+    // gVal: Pega valor seguro (Novo ou Velho)
+    const gVal = (g, k, ok) => g[k] ? dec(g[k]) : (g[ok] ? dec(g[ok]) : "");
+    const gArr = (g, k, ok) => g[k] || g[ok] || [];
+
+    document.addEventListener("deviceready", ()=>window.isCordova=true, false);
+    const safeOpen = u => {
+        if(window.isCordova && cordova.InAppBrowser) cordova.InAppBrowser.open(u, '_system');
+        else window.open(u, '_blank');
+    };
+
+    document.addEventListener("DOMContentLoaded", () => { loadCache(); setupEvts(); });
+
+    async function loadCache() {
+        let urlA = `https://raw.githubusercontent.com/${GH.u}/${GH.r}/${GH.b}/A.json?t=${Date.now()}`;
+        let urlOld = `https://raw.githubusercontent.com/${GH.u}/${GH.r}/${GH.b}/games.json?t=${Date.now()}`;
+        
+        try {
+            let r = await fetch(urlA);
+            if(!r.ok) throw 1;
+            procGames(await r.json());
+        } catch(e) {
+            try {
+                let r2 = await fetch(urlOld);
+                if(!r2.ok) throw 1;
+                procGames(await r2.json());
+            } catch(e2) {}
+        }
+
+        try {
+            let rf = await fetch(`https://raw.githubusercontent.com/${GH.u}/${GH.r}/${GH.b}/featured.json?t=${Date.now()}`);
+            if(rf.ok) { featured = await rf.json(); rendCar(); }
+        } catch(z){}
+    }
+
+    function procGames(d) {
+        if(!d) return;
+        data.G = d.G || d.games || (Array.isArray(d) ? d : []);
+        data.T = d.T || d.tags || [];
+        
+        if(data.T.length === 0) {
+            let s = new Set();
+            data.G.forEach(g => { (g.t||g.categories||[]).forEach(c => s.add(c)) });
+            data.T = [...s];
+        }
+        rendCats(); applyF();
+    }
+
+    /* UI */
+    window.forceReload = () => { localStorage.removeItem('gamesCache'); document.getElementById('game-list').innerHTML='<div style="text-align:center;padding:20px;color:#888">...</div>'; loadCache(); };
+    window.togglePlatformBar = () => { document.getElementById('platform-bar').classList.toggle('show'); document.getElementById('filter-btn').classList.toggle('active'); };
+    window.setPlatformFilter = p => { state.platform=p; document.querySelectorAll('.plat-btn').forEach(b=>b.classList.remove('active')); document.getElementById('pf-'+(p||'all')).classList.add('active'); applyF(state.tag); };
+    window.switchTab = t => { state.tab=t; state.tag=null; document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); document.getElementById('tab-'+t).classList.add('active'); document.getElementById('category-filter').style.display=(t==='categories'?'flex':'none'); applyF(); };
+
+    function applyF(specTag=null) {
+        state.tag = specTag;
+        let l = document.getElementById('game-list');
+        l.innerHTML = '';
+        let rs = [...data.G];
+        const getTs = (g, k, ok) => g[k] || g[ok] || 0;
+        
+        if(state.tab==='recent') rs.sort((a,b) => getTs(b,'ca','created_at') - getTs(a,'ca','created_at'));
+        else if(state.tab==='updated') rs.sort((a,b) => getTs(b,'ua','updated_at') - getTs(a,'ua','updated_at'));
+        else if(state.tab==='categories' && specTag) {
+            let et = enc(specTag);
+            rs = rs.filter(g => gArr(g,'t','categories').includes(et));
+            document.querySelectorAll('.cat-chip').forEach(c=>c.classList.remove('active'));
+            [...document.querySelectorAll('.cat-chip')].filter(c=>c.innerText==specTag).forEach(c=>c.classList.add('active'));
+        }
+        if(state.platform) {
+            let ep = enc(state.platform);
+            rs = rs.filter(g => gArr(g,'l','links').some(x => (x.p||x.plat) === ep));
+        }
+        
+        if(!rs.length) { l.innerHTML = '<div style="color:#666;text-align:center;">Vazio</div>'; return; }
+        
+        rs.forEach(g => {
+            let c = document.createElement('div'); c.className = 'card'; c.onclick = () => openD(g);
+            let name = gVal(g,'n','name');
+            let dev = gVal(g,'v','dev');
+            let cover = gVal(g,'c','cover');
+            let m = dev;
+            if(state.tab==='recent') {
+                let ts = g.ca || g.created_at;
+                m = ts ? new Date(ts).toLocaleDateString() : 'N/A';
+            }
+            let links = gArr(g,'l','links');
+            let bgs = [...new Set(links.map(x => dec(x.p||x.plat)))].map(p => `<span class="badge ${p}">${p}</span>`).join('');
+            
+            c.innerHTML = `<img src="${cover}" loading="lazy"><div class="card-info"><div class="card-title">${name}</div><div style="font-size:.7rem;color:#777;margin-bottom:8px;">${m}</div><div class="badges">${bgs}</div></div>`;
+            l.appendChild(c);
+        });
+    }
+
+    function rendCats() {
+        let c = document.getElementById('category-filter'); c.innerHTML='';
+        let dl = document.getElementById('dl-tags'); dl.innerHTML='';
+        data.T.map(t=>dec(t)).sort().forEach(t => {
+            let d = document.createElement('div'); d.className='cat-chip'; d.innerText=t; d.onclick=()=>applyF(t); c.appendChild(d);
+        });
+        data.T.forEach(t => { let o=document.createElement('option'); o.value=dec(t); dl.appendChild(o); });
+    }
+
+    function rendCar() {
+        let tr = document.getElementById('carousel-track'); tr.innerHTML='';
+        if(!featured.length) { document.getElementById('carousel-container').style.display='none'; return; }
+        document.getElementById('carousel-container').style.display='block';
+        
+        featured.forEach(f => {
+            let gName = f.GM ? dec(f.GM) : (f.gameName ? dec(f.gameName) : null);
+            let gData = gName ? data.G.find(x => gVal(x,'n','name') === gName) : null;
+            
+            // PRIORIDADE BG: b(novo) -> bg(velho) -> c(cover)
+            let img = gData ? (gData.b ? dec(gData.b) : (gData.bg ? dec(gData.bg) : gVal(gData,'c','cover'))) : (f.i?dec(f.i):'');
+            let tit = gData ? gVal(gData,'n','name') : (f.t?dec(f.t):'');
+            
+            if(!img) return;
+            let s = document.createElement('div'); s.className = 'carousel-slide';
+            s.style.backgroundImage = `url('${img}')`;
+            s.innerHTML = `<div class="slide-content"><div class="slide-sub">DESTAQUE</div><div class="slide-title">${tit}</div></div>`;
+            if(gData) s.onclick = () => openD(gData);
+            tr.appendChild(s);
+        });
+        carIdx=0; updCar(); resetCarTimer();
+    }
+    window.moveSlide = n => { carIdx = (carIdx + n + featured.length) % featured.length; updCar(); resetCarTimer(); };
+    function updCar() { document.getElementById('carousel-track').style.transform = `translateX(-${carIdx*100}%)`; }
+    function resetCarTimer() { if(carTimer) clearInterval(carTimer); carTimer = setInterval(() => moveSlide(1), 5000); }
+
+    function openD(g) {
+        let d = id => document.getElementById(id);
+        // BG LOGIC: b -> bg -> c
+        let rawBg = g.b || g.bg;
+        let bg = rawBg ? dec(rawBg) : gVal(g, 'c', 'cover');
+        
+        d('d-bg').style.backgroundImage = `url('${bg}')`;
+        d('d-title').innerText = gVal(g,'n','name');
+        d('d-dev').innerText = gVal(g,'v','dev');
+        d('d-desc').innerText = gVal(g,'d','desc');
+        
+        let tsC = g.ca || g.created_at;
+        let tsU = g.ua || g.updated_at;
+        d('d-date-up').innerText = tsC ? new Date(tsC).toLocaleDateString() : '-';
+        d('d-date-mod').innerText = tsU ? new Date(tsU).toLocaleDateString() : '-';
+        
+        let tags = gArr(g,'t','categories');
+        d('d-cats').innerHTML = tags.map(c => `<span class="badge" style="cursor:pointer;background:#444;" onclick="filterCat('${dec(c)}')">${dec(c)}</span>`).join(' ');
+        
+        let lk = d('d-links'); lk.innerHTML='';
+        gArr(g,'l','links').forEach(l => {
+            let a = document.createElement('a'); a.className='download-btn'; a.href="#";
+            let lbl = l.l ? dec(l.l) : dec(l.label);
+            let plt = l.p ? dec(l.p) : dec(l.plat);
+            let url = l.u ? dec(l.u) : dec(l.url);
+            a.innerHTML = `<div><b>${lbl}</b></div> <small>${plt.toUpperCase()}</small>`;
+            a.onclick = (e) => { e.preventDefault(); safeOpen(url); };
+            lk.appendChild(a);
+        });
+        d('modal-details').classList.add('active');
+    }
+    window.filterCat = t => { closeModal('modal-details'); switchTab('categories'); applyF(t); };
+    window.closeModal = id => document.getElementById(id).classList.remove('active');
+
+    /* ADMIN */
+    function setupEvts() {
+        let ks={}; document.addEventListener('keydown',e=>{ks[e.key.toLowerCase()]=!0;if(ks.l&&ks.u)openAdm()});
+        document.addEventListener('keyup',e=>delete ks[e.key.toLowerCase()]);
+        document.getElementById('ed-tag-input').addEventListener('keydown', e => {
+            if(e.key === 'Enter') {
+                let v = e.target.value.trim();
+                if(v && !temp.tags.includes(v)) { temp.tags.push(v); rendEdT(); }
+                e.target.value = '';
+            }
+        });
+    }
+    function openAdm() { document.getElementById('modal-admin').classList.add('active'); if(state.tk) document.getElementById('gh-token').value=state.tk; }
+    
+    window.adminLogin = async () => {
+        let t = document.getElementById('gh-token').value;
+        try {
+            let r = await fetch('https://api.github.com/user', { headers: {'Authorization': `token ${t}`} });
+            if(!r.ok) throw new Error("Token Inválido");
+            state.tk = t; localStorage.setItem('gh_token', t);
+            document.getElementById('admin-login').style.display='none';
+            document.getElementById('admin-dashboard').style.display='block';
+            await loadAdm(); rendAdmG();
+        } catch(e) { alert(e.message); }
+    };
+    
+    window.adminLogout = () => {
+        if(!confirm("Sair?")) return;
+        localStorage.removeItem('gh_token'); state.tk = null;
+        document.getElementById('admin-login').style.display='block';
+        document.getElementById('admin-dashboard').style.display='none';
+    };
+
+    async function loadAdm() {
+        // Tenta A.json, senao games.json
+        try {
+            let r = await fetch(`https://api.github.com/repos/${GH.u}/${GH.r}/contents/A.json?ref=${GH.b}`, { headers: {'Authorization': `token ${state.tk}`} });
+            if(r.ok) {
+                let j = await r.json(); shas.games = j.sha;
+                let c = JSON.parse(decodeURIComponent(escape(window.atob(j.content.replace(/\s/g,'')))));
+                procGames(c);
+            } else throw 1;
+        } catch(e) {
+            try {
+                let r2 = await fetch(`https://api.github.com/repos/${GH.u}/${GH.r}/contents/games.json?ref=${GH.b}`, { headers: {'Authorization': `token ${state.tk}`} });
+                if(r2.ok) {
+                    let j2 = await r2.json(); shas.games = null;
+                    let c = JSON.parse(decodeURIComponent(escape(window.atob(j2.content.replace(/\s/g,'')))));
+                    procGames(c);
+                }
+            } catch(e2){}
+        }
+        try {
+            let r = await fetch(`https://api.github.com/repos/${GH.u}/${GH.r}/contents/featured.json?ref=${GH.b}`, { headers: {'Authorization': `token ${state.tk}`} });
+            if(r.ok) {
+                let j = await r.json(); shas.featured = j.sha;
+                featured = JSON.parse(decodeURIComponent(escape(window.atob(j.content.replace(/\s/g,'')))));
+                rendCar();
+            }
+        } catch(e){}
+    }
+
+    window.viewAdmin = v => {
+        document.getElementById('adm-games-view').style.display = (v==='games'?'block':'none');
+        document.getElementById('adm-feat-view').style.display = (v==='featured'?'block':'none');
+        if(v==='featured') rendAdmF();
+    };
+
+    function rendAdmG() {
+        let l = document.getElementById('adm-list-games'); l.innerHTML='';
+        data.G.forEach((g, i) => {
+            l.innerHTML += `<div style="padding:5px;border-bottom:1px solid #444;cursor:pointer;" onclick="showEd(${i})">${gVal(g,'n','name')}</div>`;
+        });
+    }
+    
+    window.showEd = i => {
+        document.getElementById('adm-edit-form').style.display='block';
+        document.getElementById('ed-idx').value = i;
+        document.getElementById('ed-links').innerHTML=''; temp.tags=[];
+        let c = id => document.getElementById(id);
+        
+        if(i===null) {
+            c('ed-created').value = Date.now();
+            ['ed-name','ed-dev','ed-desc','ed-cover','ed-bg'].forEach(k => c(k).value='');
+        } else {
+            let g = data.G[i];
+            c('ed-created').value = g.ca || g.created_at || Date.now();
+            c('ed-name').value = gVal(g,'n','name');
+            c('ed-dev').value = gVal(g,'v','dev');
+            c('ed-desc').value = gVal(g,'d','desc');
+            c('ed-cover').value = gVal(g,'c','cover');
+            
+            // BG: se tiver b/bg carrega, senao vazio
+            let oldBg = g.b ? dec(g.b) : (g.bg ? dec(g.bg) : '');
+            c('ed-bg').value = oldBg;
+            
+            let tags = gArr(g,'t','categories'); temp.tags = tags.map(t=>dec(t));
+            let links = gArr(g,'l','links');
+            links.forEach(l => {
+                let lbl = l.l ? dec(l.l) : dec(l.label);
+                let url = l.u ? dec(l.u) : dec(l.url);
+                let plt = l.p ? dec(l.p) : dec(l.plat);
+                addLinkRow(lbl, url, plt);
+            });
+        }
+        rendEdT();
+    };
+
+    function rendEdT() {
+        let d = document.getElementById('ed-tags-active'); d.innerHTML='';
+        temp.tags.forEach(t => d.innerHTML += `<span class="tag-chip">${t}<b onclick="rmTag('${t}')" style="cursor:pointer;margin-left:5px;">×</b></span>`);
+    }
+    window.rmTag = t => { temp.tags = temp.tags.filter(x => x!==t); rendEdT(); };
+    window.addLinkRow = (l='', u='', p='windows') => {
+        let d = document.createElement('div'); d.style.cssText = "display:flex;gap:5px;margin-bottom:5px;"; d.className='lnk-row';
+        d.innerHTML = `<input class="l-lbl form-control" value="${l}" placeholder="Nome" style="flex:1;"><select class="l-plt form-control" style="width:80px;"><option value="windows" ${p=='windows'?'selected':''}>Win</option><option value="android" ${p=='android'?'selected':''}>And</option><option value="html" ${p=='html'?'selected':''}>Web</option></select><input class="l-url form-control" value="${u}" placeholder="URL" style="flex:2;"><button onclick="this.parentElement.remove()" class="btn">×</button>`;
+        document.getElementById('ed-links').appendChild(d);
+    };
+
+    window.saveLocalGame = () => {
+        let c = id => document.getElementById(id).value;
+        let lks = [...document.querySelectorAll('.lnk-row')].map(r => ({
+            l: enc(r.querySelector('.l-lbl').value),
+            p: enc(r.querySelector('.l-plt').value),
+            u: enc(r.querySelector('.l-url').value)
+        }));
+        
+        let o = {
+            n: enc(c('ed-name')), v: enc(c('ed-dev')), d: enc(c('ed-desc')),
+            c: enc(c('ed-cover')), b: c('ed-bg') ? enc(c('ed-bg')) : "",
+            t: temp.tags.map(t => enc(t)), l: lks,
+            ca: parseInt(c('ed-created')), ua: Date.now()
+        };
+        
+        let i = document.getElementById('ed-idx').value;
+        if(!i) data.G.push(o); else data.G[i] = o;
+        
+        let s = new Set(); data.G.forEach(g => (g.t||[]).forEach(t => s.add(t))); data.T = [...s];
+        
+        rendAdmG(); document.getElementById('adm-edit-form').style.display='none'; applyF(); showToast("Salvo (Novo Formato)");
+    };
+
+    window.delGame = () => {
+        let i = document.getElementById('ed-idx').value;
+        if(i && confirm("Excluir?")) {
+            data.G.splice(i, 1);
+            rendAdmG(); document.getElementById('adm-edit-form').style.display='none';
+        }
+    };
+
+    function rendAdmF() {
+        let l = document.getElementById('adm-list-feat'); l.innerHTML='';
+        featured.forEach((f, i) => {
+            let name = f.GM ? dec(f.GM) : (f.gameName ? dec(f.gameName) : "Legacy");
+            l.innerHTML += `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #333;padding:5px;"><span>${name}</span><b onclick="rmFeat(${i})" style="color:red;cursor:pointer;">×</b></div>`;
+        });
+        
+        let sel = document.getElementById('feat-select');
+        sel.innerHTML = '<option value="">-- Escolha --</option>';
+        data.G.forEach(g => {
+            let nm = gVal(g,'n','name');
+            let opt = document.createElement('option'); opt.value=nm; opt.innerText=nm;
+            sel.appendChild(opt);
+        });
+    }
+    
+    window.addFeat = () => {
+        let gName = document.getElementById('feat-select').value;
+        if(!gName) return alert("Selecione!");
+        featured.push({ GM: enc(gName) });
+        rendAdmF(); rendCar(); showToast("Destaque Adicionado");
+    };
+    window.rmFeat = i => { featured.splice(i, 1); rendAdmF(); rendCar(); };
+
+    window.syncFile = async (tp) => {
+        if(!confirm(`Salvar ${tp}?`)) return;
+        
+        let targetFile, contentObj;
+        
+        // MIGRATION LOGIC
+        if(tp === 'games') {
+            targetFile = 'A.json';
+            contentObj = data; // data contém {G:[], T:[]}
+        } else {
+            targetFile = 'featured.json';
+            // FORCE GM CONVERSION
+            contentObj = featured.map(f => {
+                if(f.GM) return { GM: f.GM };
+                if(f.gameName) return { GM: f.gameName }; // Convert Legacy
+                return f; // Keep manual fallback if any
+            });
+        }
+        
+        let b64 = window.btoa(unescape(encodeURIComponent(JSON.stringify(contentObj))));
+        try {
+            let r = await fetch(`https://api.github.com/repos/${GH.u}/${GH.r}/contents/${targetFile}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${state.tk}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: "Upd " + targetFile, content: b64, sha: shas[tp] })
+            });
+            if(!r.ok) throw new Error();
+            shas[tp] = (await r.json()).content.sha;
+            showToast("Salvo em " + targetFile);
+        } catch(e) { alert("Erro Upload"); }
+    };
+</script>
+</body>
+</html>
